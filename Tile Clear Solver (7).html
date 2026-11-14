@@ -1,0 +1,144 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Tile Clear Solver</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>
+:root{--bg:#f5f5f7;--ink:#1d1d1f;--mut:#86868b;--tray:#e6e6eb;--sf:#e8e8ed;--acc:#0071e3;--t0:#e5493f;--t1:#8a5cd0;--t2:#34a853;--t3:#2f7de1;--t4:#f0b90b;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#000;--ink:#f5f5f7;--tray:#161618;--sf:#232326;--acc:#2997ff;--t0:#ff5b50;--t1:#9d6fe6;--t2:#3dbb61;--t3:#4a90ee;--t4:#f5c518;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#000;--ink:#f5f5f7;--tray:#161618;--sf:#232326;--acc:#2997ff;--t0:#ff5b50;--t1:#9d6fe6;--t2:#3dbb61;--t3:#4a90ee;--t4:#f5c518;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;padding:36px max(20px,env(safe-area-inset-right,0px)) 40px max(20px,env(safe-area-inset-left,0px))}
+.app{max-width:420px;margin:0 auto;display:grid;gap:22px}
+.hint{margin:0;height:3.4em;text-align:center;font-size:1.1rem;font-weight:500;display:grid;align-content:center;overflow:hidden;text-wrap:balance}
+.hint small{display:block;color:var(--mut);font-size:.85rem;font-weight:400}
+.board{position:relative;-webkit-user-select:none;user-select:none;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px;padding:14px;border-radius:30px;background:var(--tray);box-shadow:inset 0 2px 6px rgba(0,0,0,.12),inset 0 -1px 0 rgba(255,255,255,.5);transition:background .3s,box-shadow .3s}
+.board.edit{touch-action:none;background:color-mix(in srgb,var(--acc) 14%,var(--tray));box-shadow:inset 0 0 0 2.5px var(--acc)}
+.tile{appearance:none;border:0;padding:0;aspect-ratio:1;border-radius:16px;cursor:pointer;display:grid;place-items:center;color:var(--mut);font:600 1.4rem -apple-system,system-ui;
+background:linear-gradient(160deg,color-mix(in srgb,var(--tc) 78%,#fff),var(--tc));
+box-shadow:inset 0 1.5px 0 rgba(255,255,255,.5),inset 0 -4px 8px rgba(0,0,0,.14),0 5px 10px rgba(0,0,0,.16);transition:transform .18s ease,opacity .25s}
+.c0{--tc:var(--t0)}.c1{--tc:var(--t1)}.c2{--tc:var(--t2)}.c3{--tc:var(--t3)}.c4{--tc:var(--t4)}
+.tile.blank{background:transparent;box-shadow:inset 0 2px 6px rgba(0,0,0,.18);cursor:default}
+.tile.pick{outline:3px solid var(--acc);outline-offset:3px;animation:breathe 2.2s ease-in-out infinite}
+.tile.pick.gamble{outline-style:dashed}
+.tile.sel{outline:3px solid var(--ink);outline-offset:3px;transform:scale(.93);animation:none}
+.board.edit .tile:not(.sel){animation:jig .22s ease-in-out infinite alternate}
+.board.edit .tile:nth-child(even):not(.sel){animation-direction:alternate-reverse}
+@keyframes breathe{50%{outline-offset:6px}}@keyframes jig{from{transform:rotate(-1.2deg)}to{transform:rotate(1.2deg)}}
+.tile:focus-visible,.btn:focus-visible,.pal button:focus-visible{outline:3px solid var(--acc);outline-offset:3px}
+.tile.hit{opacity:0;transform:scale(.4)}
+.chooser{position:absolute;z-index:3;display:flex;gap:6px;padding:8px;border-radius:30px;background:color-mix(in srgb,var(--bg) 72%,transparent);-webkit-backdrop-filter:blur(18px) saturate(1.6);backdrop-filter:blur(18px) saturate(1.6);box-shadow:0 8px 24px rgba(0,0,0,.22),inset 0 0 0 1px rgba(255,255,255,.35);animation:pop .18s ease}
+.chooser button{appearance:none;border:0;width:38px;height:38px;border-radius:50%;cursor:pointer;background:linear-gradient(160deg,color-mix(in srgb,var(--tc) 78%,#fff),var(--tc));box-shadow:inset 0 1.5px 0 rgba(255,255,255,.5),0 2px 5px rgba(0,0,0,.18)}
+@keyframes pop{from{opacity:0;transform:scale(.9)}}
+.pal{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px;transition:opacity .2s}.pal.off{opacity:0;pointer-events:none}.pal button.act{outline:3px solid var(--ink);outline-offset:3px;transform:scale(.92)}
+.pal button{appearance:none;border:0;height:46px;border-radius:23px;cursor:pointer;background:linear-gradient(160deg,color-mix(in srgb,var(--tc) 78%,#fff),var(--tc));box-shadow:inset 0 1.5px 0 rgba(255,255,255,.5),0 4px 8px rgba(0,0,0,.14)}
+.bar{display:flex;gap:14px}
+.pair{flex:2;display:flex;background:var(--sf);border-radius:23px;overflow:hidden}
+.pair .btn{flex:1;background:none;border-radius:0}.pair .btn+.btn{box-shadow:inset 1px 0 0 color-mix(in srgb,var(--mut) 35%,transparent)}
+.bar>.btn{flex:1;background:none;box-shadow:inset 0 0 0 1.5px var(--acc)}.bar>.btn.on{background:var(--acc);color:#fff;box-shadow:none}
+.btn{appearance:none;border:0;background:var(--sf);color:var(--acc);font:inherit;font-size:1rem;font-weight:500;height:46px;border-radius:23px;cursor:pointer}
+.btn:disabled{color:var(--mut);opacity:.45;cursor:default}.btn.on{background:var(--acc);color:#fff}
+.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:manipulation}
+@media (prefers-reduced-motion:reduce){.tile,.board.edit .tile,.tile.pick,.chooser{animation:none!important;transition:none}}
+</style></head><body><main class="app">
+<p class="hint" id="hint" role="status" aria-live="polite"></p>
+<div class="board" id="board"></div>
+<div class="pal off" id="pal" aria-label="Tile colors"></div>
+<div class="bar"><div class="pair"><button type="button" class="btn" id="undo">Undo</button><button type="button" class="btn" id="redo">Redo</button></div><button type="button" class="btn" id="edit" aria-pressed="false">Edit</button></div>
+</main>
+<script>
+const N=5,NAMES=['Red','Purple','Green','Blue','Yellow'];
+const START=[[2,1,0,4,1],[2,3,3,2,3],[1,1,2,0,0],[0,2,4,4,1],[1,3,4,0,3]];
+const clone=b=>b.map(r=>r.slice());
+function runs(b){const o=[];
+for(let r=0;r<N;r++){let c=0;while(c<N){const v=b[r][c];let e=c;if(v!==null){while(e+1<N&&b[r][e+1]===v)e++;if(e-c>=2)o.push({dir:'row',i:r,a:c,z:e});}c=e+1;}}
+for(let c=0;c<N;c++){let r=0;while(r<N){const v=b[r][c];let e=r;if(v!==null){while(e+1<N&&b[e+1][c]===v)e++;if(e-r>=2)o.push({dir:'col',i:c,a:r,z:e});}r=e+1;}}
+return o}
+function hitSet(b){const s=new Set();for(const x of runs(b))for(let k=x.a;k<=x.z;k++)s.add(x.dir==='row'?x.i*N+k:k*N+x.i);return s}
+function compact(b,hit){const o=clone(b);for(let c=0;c<N;c++){const keep=[];for(let r=N-1;r>=0;r--)if(!hit.has(r*N+c))keep.push(o[r][c]);for(let r=N-1,i=0;r>=0;r--,i++)o[r][c]=i<keep.length?keep[i]:null;}return o}
+function clearAt(b,r,c){const o=clone(b);for(let rr=r;rr>0;rr--)o[rr][c]=o[rr-1][c];o[0][c]=null;return o}
+function resolve(b){let cur=clone(b),total=0;for(;;){const h=hitSet(cur);if(!h.size)break;total+=h.size;cur=compact(cur,h);}return total}
+// Best next tile. Unknown new tiles match nothing, so a "sure" plan holds whatever drops in.
+function analyze(b){const sure=[],gam=[];
+for(let r=0;r<N;r++)for(let c=0;c<N;c++){const b1=clearAt(b,r,c),t=resolve(b1);
+if(t>0){sure.push({r,c,n:1,t});continue}
+let g=0;for(let k=0;k<5;k++){const b2=clone(b1);b2[0][c]=k;g+=resolve(b2);}
+if(g>0)gam.push({r,c,g,gamble:true});
+for(let r2=0;r2<N;r2++)for(let c2=0;c2<N;c2++){if(b1[r2][c2]===null)continue;const t2=resolve(clearAt(b1,r2,c2));if(t2>0)sure.push({r,c,n:2,t:t2});}}
+sure.sort((x,y)=>y.t/y.n-x.t/x.n||x.n-y.n||y.t-x.t);gam.sort((x,y)=>y.g-x.g);
+return sure[0]||gam[0]||null}
+
+const $=id=>document.getElementById(id);
+const S={board:clone(START),phase:'play',mode:'clear',sel:null,brush:0,busy:false,hit:null},hist=[],fut=[];
+const blanks=b=>{const o=[];for(let r=0;r<N;r++)for(let c=0;c<N;c++)if(b[r][c]===null)o.push({r,c});return o};
+function nextBlank(from){const s=from?from.r*N+from.c:-1;for(let k=1;k<=N*N;k++){const i=(s+k)%(N*N),r=Math.floor(i/N),c=i%N;if(S.board[r][c]===null)return{r,c}}return null}
+const state=()=>JSON.stringify({board:S.board,phase:S.phase,sel:S.sel});
+const entry=()=>({j:state(),mid:S.phase==='fill'||S.mode==='edit'});
+function snap(){hist.push(entry());fut.length=0;if(hist.length>400)hist.shift()}
+function load(j){const o=JSON.parse(j);S.board=o.board;S.phase=o.phase;S.sel=o.sel;render()}
+function canUndo(){return hist.length&&!S.busy&&!(S.mode==='edit'&&!hist[hist.length-1].mid)}
+function undo(){if(!canUndo())return;fut.push(state());let e=hist.pop();if(S.phase==='play'&&S.mode==='clear')while(e.mid&&hist.length)e=hist.pop();load(e.j)}
+function redo(){if(!fut.length||S.busy)return;hist.push(entry());load(fut.pop())}
+function onTile(r,c,kb){
+if(S.mode==='edit'){if(kb&&S.board[r][c]!==S.brush){snap();S.board[r][c]=S.brush;render()}return}
+if(S.phase==='play'){
+ if(S.sel&&S.sel.r===r&&S.sel.c===c){snap();S.board=clearAt(S.board,r,c);S.phase='fill';S.sel=blanks(S.board)[0]||null;}
+ else S.sel={r,c};
+ render()}
+else if(S.board[r][c]===null){S.sel={r,c};render()}}
+function onColor(k){if(S.mode==='edit'){S.brush=k;render();return}
+if(S.busy||!S.sel)return;snap();S.board[S.sel.r][S.sel.c]=k;
+if(S.mode==='edit'){render();return}
+S.sel=nextBlank(S.sel);if(S.sel)render();else settle()}
+function settle(){const hit=hitSet(S.board);if(!hit.size){S.phase='play';S.sel=null;render();return}
+S.busy=true;S.hit=hit;render();setTimeout(()=>{S.board=compact(S.board,hit);S.hit=null;S.busy=false;S.phase='fill';S.sel=blanks(S.board)[0]||null;render()},400)}
+function toggleEdit(){if(S.busy||S.phase!=='play')return;
+if(S.mode==='edit'){S.mode='clear';S.stroke=null;fut.length=0;const t=hist[hist.length-1];if(t&&!t.mid&&t.j===state())hist.pop()}
+else{snap();S.mode='edit'}
+S.sel=null;render()}
+
+function render(){const b=S.board,bl=blanks(b);
+const pick=(S.phase==='play'&&!bl.length&&!S.busy&&S.mode==='clear')?analyze(b):null;
+let h;
+if(S.busy)h='';
+else if(S.mode==='edit')h='Pick a color, then tap or slide over tiles.<small>Tap Done when finished.</small>';
+else if(S.phase==='fill')h='Pick the color of each new tile.<small>'+bl.length+' left</small>';
+else if(S.sel)h='Tap again to clear.';
+else if(pick)h='Tap the ringed tile.'+(pick.gamble?'<small>No sure line. This is the best try.</small>':'');
+else h='No line in reach. Clear any tile.';
+$('hint').innerHTML=h;
+let g='';
+for(let r=0;r<N;r++)for(let c=0;c<N;c++){const v=b[r][c],cl=['tile',v===null?'blank':'c'+v];
+if(pick&&pick.r===r&&pick.c===c){cl.push('pick');if(pick.gamble)cl.push('gamble')}
+if(S.sel&&S.sel.r===r&&S.sel.c===c)cl.push('sel');
+if(S.hit&&S.hit.has(r*N+c))cl.push('hit');
+g+='<button type="button" class="'+cl.join(' ')+'" data-r="'+r+'" data-c="'+c+'" aria-label="Row '+(r+1)+' column '+(c+1)+', '+(v===null?'new tile, color unknown':NAMES[v].toLowerCase())+'">'+(v===null?'?':'')+'</button>'}
+const bd=$('board');bd.innerHTML=g;
+if(!S.busy&&S.mode==='clear'&&S.phase==='fill'&&S.sel){const t=bd.children[S.sel.r*N+S.sel.c],w=230,ph=54;
+const x=Math.max(8,Math.min(bd.clientWidth-w-8,t.offsetLeft+t.offsetWidth/2-w/2)),y=S.sel.r<3?t.offsetTop+t.offsetHeight+8:t.offsetTop-ph-8;
+bd.insertAdjacentHTML('beforeend','<div class="chooser" style="left:'+x+'px;top:'+y+'px">'+NAMES.map((n,k)=>'<button type="button" class="c'+k+'" data-k="'+k+'" aria-label="'+n+'" title="'+n+'"></button>').join('')+'</div>')}
+const on=!S.busy&&S.mode==='edit';
+$('pal').className='pal'+(on?'':' off');
+$('pal').innerHTML=NAMES.map((n,k)=>'<button type="button" class="c'+k+(S.mode==='edit'&&S.brush===k?' act':'')+'" data-k="'+k+'" aria-pressed="'+(S.mode==='edit'&&S.brush===k)+'" aria-label="'+n+'" title="'+n+'"'+(on?'':' disabled tabindex="-1"')+'></button>').join('');
+$('board').className='board'+(S.mode==='edit'?' edit':'');
+$('undo').disabled=!canUndo();$('redo').disabled=!fut.length||S.busy;
+$('edit').disabled=S.busy||S.phase!=='play';$('edit').setAttribute('aria-pressed',S.mode==='edit');$('edit').textContent=S.mode==='edit'?'Done':'Edit';$('edit').classList.toggle('on',S.mode==='edit')}
+$('board').addEventListener('click',e=>{const c=e.target.closest('.chooser button');if(c){onColor(+c.dataset.k);return}
+const t=e.target.closest('.tile');if(t&&!S.busy)onTile(+t.dataset.r,+t.dataset.c,e.detail===0)});
+$('pal').addEventListener('click',e=>{const t=e.target.closest('button');if(t)onColor(+t.dataset.k)});
+// Painting: one pointer model for touch, mouse and pen. One press-drag-release is one stroke, and one undo step.
+const B=$('board');let rects=[];
+const hitTile=(x,y)=>rects.findIndex(q=>x>=q.left&&x<=q.right&&y>=q.top&&y<=q.bottom);
+function paintIdx(i){if(i<0)return;const r=Math.floor(i/N),c=i%N;if(S.board[r][c]===S.brush)return;
+if(!S.stroke.snapped){snap();S.stroke.snapped=true}S.board[r][c]=S.brush;S.stroke.dirty=true}
+function flush(){if(S.stroke&&S.stroke.dirty){S.stroke.dirty=false;render()}}
+B.addEventListener('pointerdown',e=>{if(S.mode!=='edit'||S.busy||e.button!==0||!e.target.closest('.tile'))return;
+rects=[...B.querySelectorAll('.tile')].map(t=>t.getBoundingClientRect());
+S.stroke={snapped:false,dirty:false,x:e.clientX,y:e.clientY};
+try{B.setPointerCapture(e.pointerId)}catch(_){}
+paintIdx(hitTile(e.clientX,e.clientY));flush();e.preventDefault()});
+B.addEventListener('pointermove',e=>{if(!S.stroke||S.mode!=='edit')return;
+const dx=e.clientX-S.stroke.x,dy=e.clientY-S.stroke.y,n=Math.max(1,Math.ceil(Math.hypot(dx,dy)/4));
+for(let s=1;s<=n;s++)paintIdx(hitTile(S.stroke.x+dx*s/n,S.stroke.y+dy*s/n));
+S.stroke.x=e.clientX;S.stroke.y=e.clientY;flush()});
+['pointerup','pointercancel','lostpointercapture'].forEach(n=>B.addEventListener(n,()=>{S.stroke=null}));
+$('undo').addEventListener('click',undo);$('redo').addEventListener('click',redo);$('edit').addEventListener('click',toggleEdit);
+render();
+</script></body></html>
